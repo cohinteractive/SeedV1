@@ -324,7 +324,9 @@ public class Gen {
             pinners ^= pinner;
             pinned |= BETWEEN[kingSquare | ((lsb[(int) ((pinner * DB) >>> 58)] << 6))] & playerOccupancy;
         }
-        moveListLength = getQueenTactical(board0, board1, board2, board3, ~board0 & board1 & ~board2 & colorMask, allOccupancy, otherOccupancy, responseMask, lsb, moveListLength);
+        moveListLength = getQueenTactical(board0, board1, board2, board3, ~board0 & board1 & ~board2 & colorMask, QUEEN | playerBit, allOccupancy, otherOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
+        moveListLength = getRookTactical(board0, board1, board2, board3, board0 & board1 & ~board2 & colorMask, ROOK | playerBit, allOccupancy, otherOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
+        moveListLength = getBishopTactical(board0, board1, board2, board3, ~board0 & ~board1 & board2 & colorMask, BISHOP | playerBit, allOccupancy, otherOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
         return moveListLength;
     }
 
@@ -351,16 +353,80 @@ public class Gen {
         return moveListLength;
     }
 
-    private static int getQueenTactical(long board0, long board1, long board2, long board3, long pieceBitboard, long allOccupancy, long otherOccupancy, long responseMask, int[] lsb, int moveListLength) {
+    private static int getQueenTactical(long board0, long board1, long board2, long board3, long pieceBitboard, int piece, long allOccupancy, long otherOccupancy, long responseMask, long pinned, long pinners, int[] lsb, long[] moves, int moveListLength, int kingSquare) {
         while(pieceBitboard != 0L) {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            long moveBitboard = Pext.queenMoves(square, allOccupancy) & otherOccupancy & responseMask;
-            if((b & pinned) != 0L) moveBitboard &= getPinRay(kingSquare, b, rookPinners | bishopPinners);
+            final long pinMask = -((b & pinned) >>> square);
+            long moveBitboard = ((Pext.queenMoves(square, allOccupancy) & responseMask) & (~pinMask | getPinRay(kingSquare, b, pinners, lsb))) & otherOccupancy;
+            final int moveInfo = square | (piece << START_PIECE_SHIFT);
+            while(moveBitboard != 0L) {
+                final long b2 = moveBitboard & -moveBitboard;
+                moveBitboard ^= b2;
+                final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
+                final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
+                moves[moveListLength ++] = moveInfo
+                    | CAPTURE_BITS
+                    | ((long) targetSquare << TARGET_SQUARE_SHIFT)
+                    | ((long) targetPiece << TARGET_PIECE_SHIFT)
+                    | capturedRookCastlingChange(targetPiece, targetSquare);
+                ;
+            }
         }
         return moveListLength;
     }
+
+    private static int getRookTactical(long board0, long board1, long board2, long board3, long pieceBitboard, int piece, long allOccupancy, long otherOccupancy, long responseMask, long pinned, long pinners, int[] lsb, long[] moves, int moveListLength, int kingSquare) {
+        while(pieceBitboard != 0L) {
+            final long b = pieceBitboard & -pieceBitboard;
+            pieceBitboard ^= b;
+            final int square = lsb[(int) ((b * DB) >>> 58)];
+            final long pinMask = -((b & pinned) >>> square);
+            long moveBitboard = ((Pext.rookMoves(square, allOccupancy) & responseMask) & (~pinMask | getPinRay(kingSquare, b, pinners, lsb))) & otherOccupancy;
+            final int moveInfo = square | (piece << START_PIECE_SHIFT);
+            while(moveBitboard != 0L) {
+                final long b2 = moveBitboard & -moveBitboard;
+                moveBitboard ^= b2;
+                final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
+                final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
+                moves[moveListLength ++] = moveInfo
+                    | CAPTURE_BITS
+                    | ((long) targetSquare << TARGET_SQUARE_SHIFT)
+                    | ((long) targetPiece << TARGET_PIECE_SHIFT)
+                    | capturedRookCastlingChange(targetPiece, targetSquare);
+                ;
+            }
+        }
+        return moveListLength;
+    }
+
+    private static int getBishopTactical(long board0, long board1, long board2, long board3, long pieceBitboard, int piece, long allOccupancy, long otherOccupancy, long responseMask, long pinned, long pinners, int[] lsb, long[] moves, int moveListLength, int kingSquare) {
+        while(pieceBitboard != 0L) {
+            final long b = pieceBitboard & -pieceBitboard;
+            pieceBitboard ^= b;
+            final int square = lsb[(int) ((b * DB) >>> 58)];
+            final long pinMask = -((b & pinned) >>> square);
+            long moveBitboard = ((Pext.bishopMoves(square, allOccupancy) & responseMask) & (~pinMask | getPinRay(kingSquare, b, pinners, lsb))) & otherOccupancy;
+            final int moveInfo = square | (piece << START_PIECE_SHIFT);
+            while(moveBitboard != 0L) {
+                final long b2 = moveBitboard & -moveBitboard;
+                moveBitboard ^= b2;
+                final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
+                final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
+                moves[moveListLength ++] = moveInfo
+                    | CAPTURE_BITS
+                    | ((long) targetSquare << TARGET_SQUARE_SHIFT)
+                    | ((long) targetPiece << TARGET_PIECE_SHIFT)
+                    | capturedRookCastlingChange(targetPiece, targetSquare);
+                ;
+            }
+        }
+        return moveListLength;
+    }
+
+    
+
     //endregion
 
     //#region Quiets
