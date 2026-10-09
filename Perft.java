@@ -13,20 +13,20 @@ public class Perft {
     
     private static long perft(long board0, long board1, long board2, long board3, int status, int depth, long[][] movesBuffer, long[][] boardBuffer, int ply) {
         if(depth == 0) return 1L;
-        long[] moves = movesBuffer[ply];
-        long[] board = boardBuffer[ply];
+        final long[] moves = movesBuffer[ply];
         if(depth == 1) return Gen.genTactical(board0, board1, board2, board3, status, moves) +
             Gen.genQuiet(board0, board1, board2, board3, status, moves);
         long nodes = 0L;
-        int size = Gen.genTactical(board0, board1, board2, board3, status, moves);
-        for(int i = 0; i < size; i ++) {
+        final int newPly = ply + 1;
+        final int newDepth = depth - 1;
+        final long[] board = boardBuffer[ply];
+        for(int i = 0; i < Gen.genTactical(board0, board1, board2, board3, status, moves); i ++) {
             Board.makeMoveIntoFast(board0, board1, board2, board3, status, moves[i], board);
-            nodes += perft(board[0], board[1], board[2], board[3], (int) board[4], depth - 1, movesBuffer, boardBuffer, ply + 1);
+            nodes += perft(board[0], board[1], board[2], board[3], (int) board[4], newDepth, movesBuffer, boardBuffer, newPly);
         }
-        size = Gen.genQuiet(board0, board1, board2, board3, status, moves);
-        for(int i = 0; i < size; i ++) {
+        for(int i = 0; i < Gen.genQuiet(board0, board1, board2, board3, status, moves); i ++) {
             Board.makeMoveIntoFast(board0, board1, board2, board3, status, moves[i], board);
-            nodes += perft(board[0], board[1], board[2], board[3], (int) board[4], depth - 1, movesBuffer, boardBuffer, ply + 1);
+            nodes += perft(board[0], board[1], board[2], board[3], (int) board[4], newDepth, movesBuffer, boardBuffer, newPly);
         }
         return nodes;
     }
