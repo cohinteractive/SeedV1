@@ -535,7 +535,6 @@ public class Gen {
         final long colorMask = ~(-(player) ^ board3);
         final long allOccupancy = board0 | board1 | board2;
         final long playerOccupancy = allOccupancy & colorMask;
-        final long otherOccupancy = allOccupancy & ~colorMask;
         final long playerKing = board0 & ~board1 & ~board2 & colorMask;
         final long otherKing = board0 & ~board1 & ~board2 & ~colorMask;
         final long otherQueens = ~board0 & board1 & ~board2 & ~colorMask;
@@ -578,10 +577,10 @@ public class Gen {
         moveListLength = getRookQuiets(ROOK | playerBit, board0 & board1 & ~board2 & colorMask, allOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
         moveListLength = getBishopQuiets(BISHOP | playerBit, ~board0 & ~board1 & board2 & colorMask, allOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
         moveListLength = getKnightQuiets(KNIGHT | playerBit, board0 & ~board1 & board2 & colorMask & ~pinned, allOccupancy, responseMask, lsb, movesBuffer, moveListLength);
-        return getPawnQuiets(player, PAWN | playerBit, ~board0 & board1 & board2 & colorMask, allOccupancy, otherOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
+        return getPawnQuiets(player, PAWN | playerBit, ~board0 & board1 & board2 & colorMask, allOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
     }
 
-    private static int getKingQuiets(long board0, long board1, long board2, long board3, long status, int square, int piece, int player, int playerBit, long playerKing, int other, long allOccupancy, long checkers, int[] lsb, long[] moves, long otherKing, long otherQueens, long otherRooks, long otherBishops, long otherKnights, long otherPawns) {
+    private static int getKingQuiets(long board0, long board1, long board2, long board3, int status, int square, int piece, int player, int playerBit, long playerKing, int other, long allOccupancy, long checkers, int[] lsb, long[] moves, long otherKing, long otherQueens, long otherRooks, long otherBishops, long otherKnights, long otherPawns) {
         int moveListLength = 0;
         final long moveInfo = (long) square
         | ((long) piece << START_PIECE_SHIFT)
@@ -640,8 +639,8 @@ public class Gen {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            long moveBitboard = Pext.queenMoves(square, allOccupancy) & ~allOccupancy & responseMask;
-            if((b & pinned) != 0L) moveBitboard &= getPinRay(kingSquare, b, pinners, lsb);
+            final long pinMask = -((b & pinned) >>> square);
+            long moveBitboard = Pext.queenMoves(square, allOccupancy) & ~allOccupancy & responseMask & (~pinMask | getPinRay(kingSquare, b, pinners, lsb));
             final long moveInfo = (long) square | ((long) piece << START_PIECE_SHIFT);
             while(moveBitboard != 0L) {
                 final long b2 = moveBitboard & -moveBitboard;
@@ -658,8 +657,8 @@ public class Gen {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            long moveBitboard = Pext.rookMoves(square, allOccupancy) & ~allOccupancy & responseMask;
-            if((b & pinned) != 0L) moveBitboard &= getPinRay(kingSquare, b, pinners, lsb);
+            final long pinMask = -((b & pinned) >>> square);
+            long moveBitboard = Pext.rookMoves(square, allOccupancy) & ~allOccupancy & responseMask & (~pinMask | getPinRay(kingSquare, b, pinners, lsb));
             final long moveInfo = (long) square
             | ((long) piece << START_PIECE_SHIFT)
             | rookCastlingChange(square);
@@ -678,8 +677,8 @@ public class Gen {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            long moveBitboard = Pext.bishopMoves(square, allOccupancy) & ~allOccupancy & responseMask;
-            if((b & pinned) != 0L) moveBitboard &= getPinRay(kingSquare, b, pinners, lsb);
+            final long pinMask = -((b & pinned) >>> square);
+            long moveBitboard = Pext.bishopMoves(square, allOccupancy) & ~allOccupancy & responseMask & (~pinMask | getPinRay(kingSquare, b, pinners, lsb));
             final long moveInfo = (long) square | ((long) piece << START_PIECE_SHIFT);
             while(moveBitboard != 0L) {
                 final long b2 = moveBitboard & -moveBitboard;
@@ -709,7 +708,7 @@ public class Gen {
         return moveListLength;
     }
 
-    private static int getPawnQuiets(int player, int piece, long pieceBitboard, long allOccupancy, long otherOccupancy, long responseMask, long pinned, long pinners, int[] lsb, long[] moves, int moveListLength, int kingSquare) {
+    private static int getPawnQuiets(int player, int piece, long pieceBitboard, long allOccupancy, long responseMask, long pinned, long pinners, int[] lsb, long[] moves, int moveListLength, int kingSquare) {
         final int promotionRank = 7 & ~(-player);
         final long[] advanceSingle = PAWN_ADVANCE_SINGLE[player];
         final long[] advanceDouble = PAWN_ADVANCE_DOUBLE[player];
