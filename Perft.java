@@ -116,8 +116,19 @@ public class Perft {
         for(int i = 0; i < POSITIONS.length; i ++) {
             Position position = POSITIONS[i];
             System.out.println("\n" + position.name + "\n\"" + position.fen + "\"");
+            warmUpPosition(position);
             runPosition(position);    
         }
+    }
+
+    private static void warmUpPosition(Position position) {
+        long startTime = System.nanoTime();
+        do {
+            for(int depth = 1; depth <= 4; depth ++) {
+                final long[] board = Board.fromFen(position.fen);
+                perft(board[0], board[1], board[2], board[3], (int) board[4], depth, 0);
+            }
+        } while (System.nanoTime() < (startTime + 3_000_000_000L));
     }
 
     private static void runPosition(Position position) {
