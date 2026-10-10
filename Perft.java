@@ -112,10 +112,6 @@ public class Perft {
         )
     };
 
-    private static void warmUp() {
-
-    }
-
     private static void runAll() {
         for(int i = 0; i < POSITIONS.length; i ++) {
             Position position = POSITIONS[i];
