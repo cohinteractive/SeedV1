@@ -63,13 +63,12 @@ public class Gen {
             final int targetSquare = lsb[(int) ((b * DB) >>> 58)];
             if(!isSquareAttackedByPlayer(targetSquare, other, otherKing, otherQueens, otherRooks, otherBishops, otherKnights, otherPawns, allOccupancy & ~playerKing)) {
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                final boolean targetIsRook = (targetPiece & 7) == ROOK;
                 moves[moveListLength ++] =
                     moveInfo |
                     CAPTURE_BITS |
                     (targetSquare << TARGET_SQUARE_SHIFT) |
                     (targetPiece << TARGET_PIECE_SHIFT) |
-                    (targetIsRook ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
                 ;
             }
         }
@@ -104,13 +103,12 @@ public class Gen {
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                final boolean targetIsRook = (targetPiece & 7) == ROOK;
                 moves[moveListLength ++] =
                     moveInfo |
                     CAPTURE_BITS |
                     (targetSquare << TARGET_SQUARE_SHIFT) |
                     (targetPiece << TARGET_PIECE_SHIFT) |
-                    (targetIsRook ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
                 ;
             }
             moveBitboard = destinations & ~allOccupancy;
@@ -144,13 +142,12 @@ public class Gen {
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                final boolean targetIsRook = (targetPiece & 7) == ROOK;
                 moves[moveListLength ++] =
                     moveInfo |
                     CAPTURE_BITS |
                     (targetSquare << TARGET_SQUARE_SHIFT) |
                     (targetPiece << TARGET_PIECE_SHIFT) |
-                    (targetIsRook ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
                 ;
             }
             moveBitboard = destinations & ~allOccupancy;
@@ -183,13 +180,12 @@ public class Gen {
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                final boolean targetIsRook = (targetPiece & 7) == ROOK;
                 moves[moveListLength ++] =
                     moveInfo |
                     CAPTURE_BITS |
                     (targetSquare << TARGET_SQUARE_SHIFT) |
                     (targetPiece << TARGET_PIECE_SHIFT) |
-                    (targetIsRook ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
                 ;
             }
             moveBitboard = destinations & ~allOccupancy;
@@ -222,13 +218,12 @@ public class Gen {
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                final boolean targetIsRook = (targetPiece & 7) == ROOK;
                 moves[moveListLength ++] =
                     moveInfo |
                     CAPTURE_BITS |
                     (targetSquare << TARGET_SQUARE_SHIFT) |
                     (targetPiece << TARGET_PIECE_SHIFT) |
-                    (targetIsRook ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
                 ;
             }
             moveBitboard = destinations & ~allOccupancy;
@@ -290,11 +285,10 @@ public class Gen {
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                final boolean targetIsRook = (targetPiece & 7) == ROOK;
                 final int targetInfo =
                     (targetSquare << TARGET_SQUARE_SHIFT) |
                     (targetPiece << TARGET_PIECE_SHIFT) |
-                    (targetIsRook ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
                 ;
                 if((targetSquare >>> 3) == promotionRank) {
                     final int moveInfoTarget =
@@ -402,19 +396,22 @@ public class Gen {
         final int moveInfo =
             square |
             (piece << START_PIECE_SHIFT) |
-            (WHITE_CASTLING_CHANGE_MASK ^ ((WHITE_CASTLING_CHANGE_MASK ^ BLACK_CASTLING_CHANGE_MASK) & -(long) player));
+            ((WHITE_CASTLING_CHANGE_MASK ^ ((WHITE_CASTLING_CHANGE_MASK ^ BLACK_CASTLING_CHANGE_MASK) & -player)) << CASTLING_CHANGE_SHIFT)
+        ;
         long moveBitboard = KING_ATTACKS[square] & otherOccupancy;
         while(moveBitboard != 0L) {
             final long b = moveBitboard & -moveBitboard;
             moveBitboard ^= b;
             final int targetSquare = lsb[(int) ((b * DB) >>> 58)];
-            if(!isSquareAttackedByPlayer(targetSquare, other, otherKing, otherQueens, otherRooks, otherBishops, otherKnights, otherPawns, (allOccupancy & (~playerKing) & ~b) | b)) {
+            if(!isSquareAttackedByPlayer(targetSquare, other, otherKing, otherQueens, otherRooks, otherBishops, otherKnights, otherPawns, allOccupancy & ~playerKing)) {
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                moves[moveListLength ++] = moveInfo
-                | (long) CAPTURE_BITS
-                | ((long) targetSquare << TARGET_SQUARE_SHIFT)
-                | ((long) targetPiece << TARGET_PIECE_SHIFT)
-                | capturedRookCastlingChange(targetPiece, targetSquare);
+                moves[moveListLength ++] =
+                    moveInfo |
+                    CAPTURE_BITS |
+                    (targetSquare << TARGET_SQUARE_SHIFT) |
+                    (targetPiece << TARGET_PIECE_SHIFT) |
+                    ((targetPiece & 7) == ROOK ? (capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT) : 0)
+                ;
             }
         }
         return moveListLength;
@@ -425,21 +422,26 @@ public class Gen {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            final long pinMask = -((b & pinned) >>> square);
-            long moveBitboard = ((Pext.queenMoves(square, allOccupancy) & responseMask) & (~pinMask | getPinRay(kingSquare, b, pinners, lsb))) & otherOccupancy;
-            final long moveInfo = (long) square
-            | ((long) piece << START_PIECE_SHIFT);
-            while(moveBitboard != 0L) {
+            long moveBitboard = Pext.queenMoves(square, allOccupancy) & responseMask & otherOccupancy;
+            if((b & pinned) != 0L) moveBitboard &= getPinRay(kingSquare, b, pinners, lsb);
+            if(moveBitboard == 0L) continue;
+            final int moveInfo =
+                square |
+                (piece << START_PIECE_SHIFT)
+            ;
+            do {
                 final long b2 = moveBitboard & -moveBitboard;
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                moves[moveListLength ++] = moveInfo
-                | (long) CAPTURE_BITS
-                | ((long) targetSquare << TARGET_SQUARE_SHIFT)
-                | ((long) targetPiece << TARGET_PIECE_SHIFT)
-                | capturedRookCastlingChange(targetPiece, targetSquare);
-            }
+                moves[moveListLength ++] = 
+                    moveInfo |
+                    CAPTURE_BITS |
+                    (targetSquare << TARGET_SQUARE_SHIFT) |
+                    (targetPiece << TARGET_PIECE_SHIFT) |
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                ;
+            } while(moveBitboard != 0L);
         }
         return moveListLength;
     }
@@ -449,22 +451,26 @@ public class Gen {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            final long pinMask = -((b & pinned) >>> square);
-            long moveBitboard = ((Pext.rookMoves(square, allOccupancy) & responseMask) & (~pinMask | getPinRay(kingSquare, b, pinners, lsb))) & otherOccupancy;
-            final long moveInfo = (long) square
-            | ((long) piece << START_PIECE_SHIFT)
-            | rookCastlingChange(square);
-            while(moveBitboard != 0L) {
+            long moveBitboard = Pext.rookMoves(square, allOccupancy) & responseMask & otherOccupancy;
+            if((b & pinned) != 0L) moveBitboard &= getPinRay(kingSquare, b, pinners, lsb);
+            if(moveBitboard == 0L) continue;
+            final int moveInfo = 
+                square |
+                (piece << START_PIECE_SHIFT) |
+                (rookCastlingChange(square) << CASTLING_CHANGE_SHIFT);
+            do {
                 final long b2 = moveBitboard & -moveBitboard;
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                moves[moveListLength ++] = moveInfo
-                | (long) CAPTURE_BITS
-                | ((long) targetSquare << TARGET_SQUARE_SHIFT)
-                | ((long) targetPiece << TARGET_PIECE_SHIFT)
-                | capturedRookCastlingChange(targetPiece, targetSquare);
-            }
+                moves[moveListLength ++] =
+                    moveInfo |
+                    CAPTURE_BITS |
+                    (targetSquare << TARGET_SQUARE_SHIFT) |
+                    (targetPiece << TARGET_PIECE_SHIFT) |
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                ;
+            } while(moveBitboard != 0L);
         }
         return moveListLength;
     }
@@ -474,21 +480,26 @@ public class Gen {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            final long pinMask = -((b & pinned) >>> square);
-            long moveBitboard = ((Pext.bishopMoves(square, allOccupancy) & responseMask) & (~pinMask | getPinRay(kingSquare, b, pinners, lsb))) & otherOccupancy;
-            final long moveInfo = (long) square
-            | ((long) piece << START_PIECE_SHIFT);
-            while(moveBitboard != 0L) {
+            long moveBitboard = Pext.bishopMoves(square, allOccupancy) & responseMask & otherOccupancy;
+            if((b & pinned) != 0L) moveBitboard &= getPinRay(kingSquare, b, pinners, lsb);
+            if(moveBitboard == 0L) continue;
+            final int moveInfo =
+                square |
+                (piece << START_PIECE_SHIFT)
+            ;
+            do {
                 final long b2 = moveBitboard & -moveBitboard;
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                moves[moveListLength ++] = moveInfo
-                | (long) CAPTURE_BITS
-                | ((long) targetSquare << TARGET_SQUARE_SHIFT)
-                | ((long) targetPiece << TARGET_PIECE_SHIFT)
-                | capturedRookCastlingChange(targetPiece, targetSquare);
-            }
+                moves[moveListLength ++] =
+                    moveInfo |
+                    CAPTURE_BITS |
+                    (targetSquare << TARGET_SQUARE_SHIFT) |
+                    (targetPiece << TARGET_PIECE_SHIFT) |
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                ;
+            } while(moveBitboard != 0L);
         }
         return moveListLength;
     }
@@ -500,19 +511,24 @@ public class Gen {
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
             long moveBitboard = leapAttacks[square] & otherOccupancy & responseMask;
-            final long moveInfo = (long) square
-            | ((long) piece << START_PIECE_SHIFT);
-            while(moveBitboard != 0L) {
+            if(moveBitboard == 0L) continue;
+            final int moveInfo =
+                square |
+                (piece << START_PIECE_SHIFT)
+            ;
+            do {
                 final long b2 = moveBitboard & -moveBitboard;
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                moves[moveListLength ++] = moveInfo
-                | (long) CAPTURE_BITS
-                | ((long) targetSquare << TARGET_SQUARE_SHIFT)
-                | ((long) targetPiece << TARGET_PIECE_SHIFT)
-                | capturedRookCastlingChange(targetPiece, targetSquare);
-            }
+                moves[moveListLength ++] =
+                    moveInfo |
+                    CAPTURE_BITS |
+                    (targetSquare << TARGET_SQUARE_SHIFT) |
+                    (targetPiece << TARGET_PIECE_SHIFT) |
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                ;
+            } while(moveBitboard != 0L);
         }
         return moveListLength;
     }
@@ -525,58 +541,74 @@ public class Gen {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
-            final long moveInfo = (long) square
-            | ((long) piece << START_PIECE_SHIFT);
-            final long moveInfoCapture = moveInfo
-            | (long) CAPTURE_BITS;
-            final long moveInfoEnPassant = moveInfo
-            | (long) EN_PASSANT_BITS;
-            final long moveInfoPromotion = moveInfo
-            | (long) PROMOTION_BITS;
-            final long moveInfoCapturePromotion = moveInfo
-            | (long) CAPTURE_PROMOTION_BITS;
-            final long pinMask = -((b & pinned) >>> square);
-            final long pinRay = ~pinMask | getPinRay(kingSquare, b, pinners, lsb);
-            final long attacks = pawnAttacks[square];
-            long moveBitboard = attacks & otherOccupancy & responseMask & pinRay;
+            final int moveInfo =
+                square |
+                (piece << START_PIECE_SHIFT)
+            ;
+            final int moveInfoCapture =
+                moveInfo | 
+                CAPTURE_BITS
+            ;
+            final int moveInfoEnPassant =
+                moveInfo |
+                EN_PASSANT_BITS
+            ;
+            final int moveInfoPromotion =
+                moveInfo |
+                PROMOTION_BITS
+            ;
+            final int moveInfoCapturePromotion =
+                moveInfo |
+                CAPTURE_PROMOTION_BITS
+            ;
+            final long pinRay = (b & pinned) != 0L ? getPinRay(kingSquare, b, pinners, lsb) : ~0L;
+            final long destinations = pawnAttacks[square] & pinRay;
+            long moveBitboard = destinations & otherOccupancy & responseMask;
             while(moveBitboard != 0L) {
                 final long b2 = moveBitboard & -moveBitboard;
                 moveBitboard ^= b2;
                 final int targetSquare = lsb[(int) ((b2 * DB) >>> 58)];
                 final int targetPiece = getTargetPiece(board0, board1, board2, board3, targetSquare);
-                final long targetInfo =((long) targetSquare << TARGET_SQUARE_SHIFT)
-                | ((long) targetPiece << TARGET_PIECE_SHIFT)
-                | capturedRookCastlingChange(targetPiece, targetSquare);
+                final int targetInfo =
+                    (targetSquare << TARGET_SQUARE_SHIFT) |
+                    (targetPiece << TARGET_PIECE_SHIFT) |
+                    ((targetPiece & 7) == ROOK ? capturedRookCastlingChange(targetPiece, targetSquare) << CASTLING_CHANGE_SHIFT : 0)
+                ;
                 if((targetSquare >>> 3) == promotionRank) {
-                    final long moveInfoTarget = moveInfoCapturePromotion
-                    | targetInfo;
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (QUEEN  | playerBit) << PROMOTE_PIECE_SHIFT);
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (ROOK   | playerBit) << PROMOTE_PIECE_SHIFT);
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (BISHOP | playerBit) << PROMOTE_PIECE_SHIFT);
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (KNIGHT | playerBit) << PROMOTE_PIECE_SHIFT);
-                } else moves[moveListLength ++] = moveInfoCapture
-                | targetInfo;
+                    final int moveInfoTarget =
+                        moveInfoCapturePromotion |
+                        targetInfo
+                    ;
+                    moves[moveListLength ++] = moveInfoTarget | ((QUEEN  | playerBit) << PROMOTE_PIECE_SHIFT);
+                    moves[moveListLength ++] = moveInfoTarget | ((ROOK   | playerBit) << PROMOTE_PIECE_SHIFT);
+                    moves[moveListLength ++] = moveInfoTarget | ((BISHOP | playerBit) << PROMOTE_PIECE_SHIFT);
+                    moves[moveListLength ++] = moveInfoTarget | ((KNIGHT | playerBit) << PROMOTE_PIECE_SHIFT);
+                } else moves[moveListLength ++] =
+                    moveInfoCapture |
+                    targetInfo
+                ;
             }
-            final long epDestination = attacks & epBit & pinRay;
+            final long epDestination = destinations & epBit;
             if(epDestination != 0L) {
                 final int capturedSquare = eSquare + (player << 4) - 8;
                 final long capturedPawnBit = 1L << capturedSquare;
-                final boolean checkResponse = checkers == 0L || (epDestination & responseMask) != 0L || (capturedPawnBit & checkers) != 0L;
-                if((otherPawns & capturedPawnBit) != 0L && checkResponse) {
+                if((otherPawns & capturedPawnBit) != 0L && (checkers == 0L || (epDestination & responseMask) != 0L || (capturedPawnBit & checkers) != 0L)) {
                     final long occupancyAfter = (allOccupancy ^ b ^ capturedPawnBit) | epDestination;
-                    if(!isSquareAttackedByPlayer(kingSquare, other, otherKing, otherQueens, otherRooks, otherBishops, otherKnights, otherPawns & ~capturedPawnBit, occupancyAfter)) moves[moveListLength ++] = moveInfoEnPassant | ((long) eSquare << TARGET_SQUARE_SHIFT);
+                    if(!isSquareAttackedByPlayer(kingSquare, other, otherKing, otherQueens, otherRooks, otherBishops, otherKnights, otherPawns & ~capturedPawnBit, occupancyAfter)) moves[moveListLength ++] = moveInfoEnPassant | (eSquare << TARGET_SQUARE_SHIFT);
                 }
             }
             final long singlePush = advanceSingle[square] & ~allOccupancy;
             if(singlePush != 0L) {
                 final int targetSquare = lsb[(int) ((singlePush * DB) >>> 58)];
                 if((targetSquare >>> 3) == promotionRank && (singlePush & pinRay & responseMask) != 0L) {
-                    final long moveInfoTarget = moveInfoPromotion
-                    | ((long) targetSquare << TARGET_SQUARE_SHIFT);
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (QUEEN  | playerBit) << PROMOTE_PIECE_SHIFT);
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (ROOK   | playerBit) << PROMOTE_PIECE_SHIFT);
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (BISHOP | playerBit) << PROMOTE_PIECE_SHIFT);
-                    moves[moveListLength ++] = moveInfoTarget | ((long) (KNIGHT | playerBit) << PROMOTE_PIECE_SHIFT);
+                    final long moveInfoTarget =
+                        moveInfoPromotion |
+                        (targetSquare << TARGET_SQUARE_SHIFT)
+                    ;
+                    moves[moveListLength ++] = moveInfoTarget | ((QUEEN  | playerBit) << PROMOTE_PIECE_SHIFT);
+                    moves[moveListLength ++] = moveInfoTarget | ((ROOK   | playerBit) << PROMOTE_PIECE_SHIFT);
+                    moves[moveListLength ++] = moveInfoTarget | ((BISHOP | playerBit) << PROMOTE_PIECE_SHIFT);
+                    moves[moveListLength ++] = moveInfoTarget | ((KNIGHT | playerBit) << PROMOTE_PIECE_SHIFT);
                 }
             }
         }
