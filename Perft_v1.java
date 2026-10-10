@@ -27,6 +27,15 @@ public final class Perft_v1 {
     private static final int MAX_DEPTH = 64;
     private static final int MAX_MOVES = 512;
 
+    public static void main(String[] args) {
+        try {
+            run(args);
+        } catch(IllegalArgumentException | IllegalStateException exception) {
+            System.err.println(exception.getMessage());
+            System.exit(1);
+        }
+    }
+
     private static final class Position {
         final String id;
         final String name;
@@ -323,14 +332,7 @@ public final class Perft_v1 {
         }
     }
 
-    public static void main(String[] args) {
-        try {
-            run(args);
-        } catch(IllegalArgumentException | IllegalStateException exception) {
-            System.err.println(exception.getMessage());
-            System.exit(1);
-        }
-    }
+    
 
     private static void run(String[] args) {
         if(args.length == 0 || (args.length == 1 && args[0].equals("--verify"))) {
