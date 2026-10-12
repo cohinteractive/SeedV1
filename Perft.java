@@ -1,3 +1,5 @@
+import java.util.Locale;
+
 public class Perft {
 
     public static void main(String[] args) {
@@ -141,9 +143,9 @@ public class Perft {
             nodes = perft(board[0], board[1], board[2], board[3], (int) board[4], depth, 0);
             time = (System.nanoTime() - time);
             long ms = time / 1_000_000L;
-            System.out.println(nodes + " nodes in " + ms + " ms");
+            System.out.println(format(nodes) + " nodes in " + format(ms) + " ms");
         }
-        System.out.println("Nodes per second: " + ((nodes * 1_000_000_000L) / time));
+        System.out.println("Nodes per second: " + format((nodes * 1_000_000_000L) / time));
     }
     
     private static long perft(long board0, long board1, long board2, long board3, int status, int depth, int ply) {
@@ -166,6 +168,10 @@ public class Perft {
             nodes += perft(board[0], board[1], board[2], board[3], (int) board[4], newDepth, newPly);
         }
         return nodes;
+    }
+
+    private static String format(long number) {
+        return String.format(Locale.US, "%,d", number);
     }
 
 }

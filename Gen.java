@@ -279,6 +279,7 @@ public class Gen {
                 EN_PASSANT_BITS
             ;
             final long pinRay = (b & pinned) != 0L ? getPinRay(kingSquare, b, pinners, lsb) : ~0L;
+            final long pinRayAndResponseMask = pinRay & responseMask;
             long destinations = pawnAttacks[square] & pinRay;
             long moveBitboard = destinations & otherOccupancy & responseMask;
             while(moveBitboard != 0L) {
@@ -316,7 +317,7 @@ public class Gen {
             final long singlePush = advanceSingle[square] & ~allOccupancy;
             if(singlePush == 0L) continue;
             final int targetSquare = square + pawnMoveDirectionDelta;
-            if((singlePush & pinRay & responseMask) != 0L) {
+            if((singlePush & pinRayAndResponseMask) != 0L) {
                 if((targetSquare >>> 3) == promotionRank) {
                     final int moveInfoTarget =
                         moveInfoPromotion |
@@ -330,7 +331,7 @@ public class Gen {
                     moves[moveListLength ++] = moveInfoPawnPush | (targetSquare << TARGET_SQUARE_SHIFT);
                 }
             }
-            final long doublePush = advanceDouble[square] & ~allOccupancy & pinRay & responseMask;
+            final long doublePush = advanceDouble[square] & ~allOccupancy & pinRayAndResponseMask;
             if(doublePush != 0L) moves[moveListLength ++] = moveInfoDoublePush | ((square + pawnMoveDirectionDelta + pawnMoveDirectionDelta) << TARGET_SQUARE_SHIFT);
         }
         return moveListLength;
@@ -669,7 +670,7 @@ public class Gen {
         moveListLength = getRookQuiets(ROOK | playerBit, board0 & board1 & ~board2 & colorMask, allOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
         moveListLength = getBishopQuiets(BISHOP | playerBit, ~board0 & ~board1 & board2 & colorMask, allOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
         moveListLength = getKnightQuiets(KNIGHT | playerBit, board0 & ~board1 & board2 & colorMask & ~pinned, allOccupancy, responseMask, lsb, movesBuffer, moveListLength);
-        return getPawnQuiets(player, PAWN | playerBit, ~board0 & board1 & board2 & colorMask, allOccupancy, responseMask, pinned, pinners, lsb, movesBuffer, moveListLength, kingSquare);
+        return getPawnQuiets(player, PAWN | playerBit, (~board0 & board1 & board2 & colorMask) & (~pinned | KING_FILE[kingSquare]), allOccupancy, responseMask, lsb, movesBuffer, moveListLength, kingSquare);
     }
 
     private static int getKingQuiets(long board0, long board1, long board2, long board3, int status, int square, int piece, int player, int playerBit, long playerKing, int other, long allOccupancy, long checkers, int[] lsb, long[] moves, long otherKing, long otherQueens, long otherRooks, long otherBishops, long otherKnights, long otherPawns) {
@@ -837,7 +838,7 @@ public class Gen {
         return moveListLength;
     }
 
-    private static int getPawnQuiets(int player, int piece, long pieceBitboard, long allOccupancy, long responseMask, long pinned, long pinners, int[] lsb, long[] moves, int moveListLength, int kingSquare) {
+    private static int getPawnQuiets(int player, int piece, long pieceBitboard, long allOccupancy, long responseMask, int[] lsb, long[] moves, int moveListLength, int kingSquare) {
         final int promotionRank = 7 & ~(-player);
         final long[] advanceSingle = PAWN_ADVANCE_SINGLE[player];
         final long[] advanceDouble = PAWN_ADVANCE_DOUBLE[player];
@@ -850,13 +851,12 @@ public class Gen {
             if(singlePush == 0L) continue;
             final int targetSquare = square + pawnMoveDirectionDelta;
             if((targetSquare >>> 3) == promotionRank) continue;
-            final long pinRayAndResponseMask = ((b & pinned) != 0L ? getPinRay(kingSquare, b, pinners, lsb) : ~0L) & responseMask;
             final int moveInfo =
                 square |
                 (piece << START_PIECE_SHIFT)
             ;
-            if((singlePush & pinRayAndResponseMask) != 0L) moves[moveListLength ++] = moveInfo | PAWN_PUSH_BITS | (targetSquare << TARGET_SQUARE_SHIFT);
-            final long doublePush = advanceDouble[square] & ~allOccupancy & pinRayAndResponseMask;
+            if((singlePush & responseMask) != 0L) moves[moveListLength ++] = moveInfo | PAWN_PUSH_BITS | (targetSquare << TARGET_SQUARE_SHIFT);
+            final long doublePush = advanceDouble[square] & ~allOccupancy & responseMask;
             if(doublePush != 0L) moves[moveListLength ++] =
                 moveInfo |
                 PAWN_DOUBLE_PUSH_BITS |
@@ -902,6 +902,7 @@ public class Gen {
     private static final long[][] PAWN_ADVANCE_SINGLE = new long[2][64];
     private static final long[][] PAWN_ADVANCE_DOUBLE = new long[2][64];
     private static final long[] BETWEEN = new long[64 * 64];
+    private static final long[] KING_FILE = new long[64];
     
     private static final int A1 = 0;
     private static final int H1 = 7;
@@ -989,6 +990,7 @@ public class Gen {
                 BETWEEN[square | (otherSquare << 6)] = betweenBits;
                 BETWEEN[otherSquare | (square << 6)] = betweenBits;
             }
+            KING_FILE[square] = 0x0101010101010101L << (square & 7);
         }
     }
     //#endregion
