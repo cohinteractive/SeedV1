@@ -245,6 +245,7 @@ public class Gen {
         final long[] advanceSingle = PAWN_ADVANCE_SINGLE[player];
         final long[] advanceDouble = PAWN_ADVANCE_DOUBLE[player];
         final int pieceShifted = piece << START_PIECE_SHIFT;
+        final int pawnMoveDirectionDelta = 8 - (player << 4);
         while(pieceBitboard != 0L) {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
@@ -314,7 +315,7 @@ public class Gen {
             }
             final long singlePush = advanceSingle[square] & ~allOccupancy;
             if(singlePush == 0L) continue;
-            final int targetSquare = lsb[(int) ((singlePush * DB) >>> 58)];
+            final int targetSquare = square + pawnMoveDirectionDelta;
             if((singlePush & pinRay & responseMask) != 0L) {
                 if((targetSquare >>> 3) == promotionRank) {
                     final int moveInfoTarget =
@@ -330,7 +331,7 @@ public class Gen {
                 }
             }
             final long doublePush = advanceDouble[square] & ~allOccupancy & pinRay & responseMask;
-            if(doublePush != 0L) moves[moveListLength ++] = moveInfoDoublePush | (lsb[(int) ((doublePush * DB) >>> 58)] << TARGET_SQUARE_SHIFT);
+            if(doublePush != 0L) moves[moveListLength ++] = moveInfoDoublePush | ((square + pawnMoveDirectionDelta + pawnMoveDirectionDelta) << TARGET_SQUARE_SHIFT);
         }
         return moveListLength;
     }
@@ -537,6 +538,7 @@ public class Gen {
         final int promotionRank = 7 & ~(-player);
         final long[] pawnAttacks = PAWN_ATTACKS[player];
         final long[] advanceSingle = PAWN_ADVANCE_SINGLE[player];
+        final int pawnMoveDirectionDelta = 8 - (player << 4);
         while(pieceBitboard != 0L) {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
@@ -599,7 +601,7 @@ public class Gen {
             }
             final long singlePush = advanceSingle[square] & ~allOccupancy;
             if(singlePush != 0L) {
-                final int targetSquare = lsb[(int) ((singlePush * DB) >>> 58)];
+                final int targetSquare = square + pawnMoveDirectionDelta;
                 if((targetSquare >>> 3) == promotionRank && (singlePush & pinRay & responseMask) != 0L) {
                     final long moveInfoTarget =
                         moveInfoPromotion |
@@ -839,13 +841,14 @@ public class Gen {
         final int promotionRank = 7 & ~(-player);
         final long[] advanceSingle = PAWN_ADVANCE_SINGLE[player];
         final long[] advanceDouble = PAWN_ADVANCE_DOUBLE[player];
+        final int pawnMoveDirectionDelta = 8 - (player << 4);
         while(pieceBitboard != 0L) {
             final long b = pieceBitboard & -pieceBitboard;
             pieceBitboard ^= b;
             final int square = lsb[(int) ((b * DB) >>> 58)];
             final long singlePush = advanceSingle[square] & ~allOccupancy;
             if(singlePush == 0L) continue;
-            final int targetSquare = lsb[(int) ((singlePush * DB) >>> 58)];
+            final int targetSquare = square + pawnMoveDirectionDelta;
             if((targetSquare >>> 3) == promotionRank) continue;
             final long pinRayAndResponseMask = ((b & pinned) != 0L ? getPinRay(kingSquare, b, pinners, lsb) : ~0L) & responseMask;
             final int moveInfo =
@@ -857,7 +860,7 @@ public class Gen {
             if(doublePush != 0L) moves[moveListLength ++] =
                 moveInfo |
                 PAWN_DOUBLE_PUSH_BITS |
-                (lsb[(int) ((doublePush * DB) >>> 58)] << TARGET_SQUARE_SHIFT)
+                ((square + pawnMoveDirectionDelta + pawnMoveDirectionDelta) << TARGET_SQUARE_SHIFT)
             ;
         }
         return moveListLength;

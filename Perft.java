@@ -132,20 +132,18 @@ public class Perft {
     }
 
     private static void runPosition(Position position) {
-        long totalTime = 0L;
-        long totalNodes = 0L;
+        long nodes = 0L;
+        long time = 0L;
         for(int depth = 1; depth <= position.depth; depth ++) {
             System.out.print("Depth " + depth + "/" + position.depth + ": ");
             final long[] board = Board.fromFen(position.fen);
-            long time = System.nanoTime();
-            long nodes = perft(board[0], board[1], board[2], board[3], (int) board[4], depth, 0);
+            time = System.nanoTime();
+            nodes = perft(board[0], board[1], board[2], board[3], (int) board[4], depth, 0);
             time = (System.nanoTime() - time);
             long ms = time / 1_000_000L;
             System.out.println(nodes + " nodes in " + ms + " ms");
-            totalTime += time;
-            totalNodes += nodes;
         }
-        System.out.println("Nodes per second: " + ((totalNodes * 1_000_000_000L) / totalTime));
+        System.out.println("Nodes per second: " + ((nodes * 1_000_000_000L) / time));
     }
     
     private static long perft(long board0, long board1, long board2, long board3, int status, int depth, int ply) {
@@ -157,11 +155,13 @@ public class Perft {
         final int newPly = ply + 1;
         final int newDepth = depth - 1;
         final long[] board = boardBuffer[ply];
-        for(int i = 0; i < Gen.genTactical(board0, board1, board2, board3, status, moves); i ++) {
+        int size = Gen.genTactical(board0, board1, board2, board3, status, moves);
+        for(int i = 0; i < size; i ++) {
             Board.makeMoveIntoFast(board0, board1, board2, board3, status, moves[i], board);
             nodes += perft(board[0], board[1], board[2], board[3], (int) board[4], newDepth, newPly);
         }
-        for(int i = 0; i < Gen.genQuiet(board0, board1, board2, board3, status, moves); i ++) {
+        size = Gen.genQuiet(board0, board1, board2, board3, status, moves);
+        for(int i = 0; i < size; i ++) {
             Board.makeMoveIntoFast(board0, board1, board2, board3, status, moves[i], board);
             nodes += perft(board[0], board[1], board[2], board[3], (int) board[4], newDepth, newPly);
         }
