@@ -4,6 +4,7 @@ public class Perft {
 
     public static void main(String[] args) {
         runAll();
+        //runDebug("rnbq2kr/pp1Pbppp/2p5/8/2B3Q1/8/PPP2nPP/RNB1K1NR b KQ - 1 8", 2);
     }
 
     private static final long[][] movesBuffer = new long[64][128];
@@ -123,6 +124,18 @@ public class Perft {
         }
     }
 
+    private static void runDebug() {
+        Position position = POSITIONS[19];
+        System.out.println("\n" + position.name + "\n\"" + position.fen + "\"");
+        debugPosition(position, 5);
+    }
+
+    private static void runDebug(String fen, int depth) {
+        Position position = new Position("test", "test", fen, depth, 0);
+        System.out.println("\n" + position.name + "\n\"" + position.fen + "\"");
+        debugPosition(position, depth);
+    }
+
     private static void warmUpPosition(Position position) {
         long startTime = System.nanoTime();
         do {
@@ -145,7 +158,12 @@ public class Perft {
             long ms = time / 1_000_000L;
             System.out.println(format(nodes) + " nodes in " + format(ms) + " ms");
         }
-        System.out.println("Nodes per second: " + format((nodes * 1_000_000_000L) / time));
+        System.out.print("Nodes per second: " + format((nodes * 1_000_000_000L) / time) + "\nResult: ");
+        if(nodes == position.expectedNodes) {
+            System.out.println("PASSED");
+        } else {
+            System.out.println("FAILED expected " + format(position.expectedNodes) + ", got " + format(nodes) + ", diff " + format(nodes - position.expectedNodes));
+        }
     }
     
     private static long perft(long board0, long board1, long board2, long board3, int status, int depth, int ply) {
@@ -172,6 +190,50 @@ public class Perft {
 
     private static String format(long number) {
         return String.format(Locale.US, "%,d", number);
+    }
+
+    private static String formatMove(long move) {
+        int from = (int) move & 63;
+        int to = (int) (move >>> 6) & 63;
+        int promotion = (int) (move >>> 12) & 7;
+        String text = "" + (char) ('a' + (from & 7)) + (char) ('1' + (from >>> 3))
+            + (char) ('a' + (to & 7)) + (char) ('1' + (to >>> 3));
+        return promotion == 0 ? text : text + " kqrbnp".charAt(promotion);
+    }
+
+    private static void debugPosition(Position position, int depth) {
+        System.out.println("Depth " + depth);
+        final long[] board = Board.fromFen(position.fen);
+        long nodes = perftDebug(board[0], board[1], board[2], board[3], (int) board[4], depth, 0);
+        System.out.println("Total: " + format(nodes));
+        if(depth == position.depth) {
+            System.out.println("Expected: " + format(position.expectedNodes));
+            System.out.println(nodes == position.expectedNodes ? "PASSED" : "FAILED");
+        }
+    }
+
+    private static long perftDebug(long board0, long board1, long board2, long board3, int status, int depth, int ply) {
+        if(depth == 0) return 1L;
+        final long[] moves = movesBuffer[ply];
+        final long[] board = boardBuffer[ply];
+        long nodes = 0L;
+        int totalRootMoves = Gen.genTactical(board0, board1, board2, board3, status, moves) + Gen.genQuiet(board0, board1, board2, board3, status, moves);
+        for(int pass = 0; pass < 2; pass ++) {
+            int size = pass == 0
+            ? Gen.genTactical(board0, board1, board2, board3, status, moves)
+            : Gen.genQuiet(board0, board1, board2, board3, status, moves);
+            for(int i = 0; i < size; i ++) {
+                long move = moves[i];
+                Board.makeMoveIntoFast(board0, board1, board2, board3, status, move, board);
+                long count = perft(board[0], board[1], board[2], board[3], (int) board[4], depth - 1, ply + 1);
+                nodes += count;
+                StringBuilder output = new StringBuilder();
+                output.append(String.format(Locale.US, "%3d / %3d) %-6s %s",
+                    i + 1, totalRootMoves, formatMove(move) + ":", format(count)));
+                System.out.println(output);
+            }
+        }
+        return nodes;
     }
 
 }

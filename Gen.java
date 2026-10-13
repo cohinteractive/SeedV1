@@ -944,6 +944,7 @@ public class Gen {
     static {
         for(int square = A1; square <= H8; square ++) {
             final long squareBit = 1L << square;
+            KING_FILE[square] = 0x0101010101010101L << (square & 7);
             KING_ATTACKS[square] =
                 (squareBit << 9 & ~FILE_A_BITBOARD) |
                 (squareBit << 8) |
@@ -990,7 +991,6 @@ public class Gen {
                 BETWEEN[square | (otherSquare << 6)] = betweenBits;
                 BETWEEN[otherSquare | (square << 6)] = betweenBits;
             }
-            KING_FILE[square] = 0x0101010101010101L << (square & 7);
         }
     }
     //#endregion
