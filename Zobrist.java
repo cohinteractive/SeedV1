@@ -2,7 +2,7 @@ public class Zobrist {
     
     public static final long[][][] PIECE = new long[8][2][64];
     public static final long WHITEMOVE;
-    public static final long[][] CASTLING = new long[2][2];
+    public static final long[] CASTLING = new long[16];
     public static final long[] ENPASSANT_FILE = new long[8];
 
     public static long getKey(int[] squares, int playerToMove, int castling, int eSquare) {
@@ -11,11 +11,7 @@ public class Zobrist {
 			int piece = squares[i] & 0xf;
             key ^= PIECE[piece & 7][piece >>> 3][i];
 		}
-		return  key ^
-                (CASTLING[0][0] & -((long) (castling & 1))) ^
-                (CASTLING[0][1] & -((long) ((castling >>> 1) & 1))) ^
-                (CASTLING[1][0] & -((long) ((castling >>> 2) & 1))) ^
-                (CASTLING[1][1] & -((long) ((castling >>> 3) & 1))) ^
+		return  key ^ CASTLING[castling] ^
 		        (ENPASSANT_FILE[eSquare & 7] & -((long) ((eSquare | -eSquare) >>> 31))) ^
 		        (WHITEMOVE & ~(-((long) playerToMove)));
 	}
@@ -31,13 +27,16 @@ public class Zobrist {
                         PIECE[pieceOrFile][player][square] = rng.nextLong();
                     }
                 }
-                for(int side = 0; side < 2; side ++) {
-                    CASTLING[player][side] = rng.nextLong();
-                }
             }
             ENPASSANT_FILE[pieceOrFile] = rng.nextLong();
         }
         WHITEMOVE = rng.nextLong();
+        final long[] CASTLING_TEMP = {
+            rng.nextLong(), rng.nextLong(), rng.nextLong(), rng.nextLong()
+        };
+        for(int castling = 0; castling < 16; castling ++) {
+            CASTLING[castling] = ((castling & 1) != 0 ? CASTLING_TEMP[0] : 0) ^ ((castling & 2) != 0 ? CASTLING_TEMP[1] : 0) ^ ((castling & 4) != 0 ? CASTLING_TEMP[2] : 0) ^ ((castling & 8) != 0 ? CASTLING_TEMP[3] : 0);  
+        }
     }
 
     private Zobrist() {}
