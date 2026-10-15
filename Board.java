@@ -97,6 +97,8 @@ public class Board {
     private static final int CASTLING_SHIFT = 1;
     private static final int CASTLING_BITS = 0b1111;
     private static final int CASTLING_BITS_SHIFTED = CASTLING_BITS << CASTLING_SHIFT;
+    private static final int KING = 1;
+    private static final int ROOK = 3;
     private static final int PAWN = 6;
 
     private static void makeQuietIntoFast(long board0, long board1, long board2, long board3, int status, long move, long[] newBoard) {
@@ -241,6 +243,40 @@ public class Board {
         newBoard[STATUS] = (1 ^ player) | (castling << CASTLING_SHIFT) | (((status >>> HALF_MOVE_CLOCK_SHIFT & HALF_MOVE_CLOCK_BITS) + 1) << HALF_MOVE_CLOCK_SHIFT) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
     }
 
+    private static void makeCastleInto(long board0, long board1, long board2, long board3, int status, long key, long move, long[] newBoard) {
+        final int player = status & PLAYER_BIT;
+        final int startSquare = (int) move & SQUARE_BITS;
+        final int targetSquare = (int) move >>> TARGET_SQUARE_SHIFT & SQUARE_BITS;
+        final long kingMoveBits = (1L << startSquare) | (1L << targetSquare);
+        final int eSquare = (status >>> ESQUARE_SHIFT) & SQUARE_BITS;
+        final int rookStartSquare;
+        final int rookTargetSquare;
+        if((targetSquare & FILE) == FILE_G) {
+            rookStartSquare = targetSquare + 1;
+            rookTargetSquare = targetSquare - 1;
+        } else {
+            rookStartSquare = targetSquare - 2;
+            rookTargetSquare = targetSquare + 1;
+        }
+        final long rookMoveBits = (1L << rookStartSquare) | (1L << rookTargetSquare);
+        final long bothPieceMoveBits = kingMoveBits | rookMoveBits;
+        board0 ^= bothPieceMoveBits;
+        board1 ^= rookMoveBits;
+        board3 ^= -player & (bothPieceMoveBits);
+        final int castlingChange = (int) (move >>> CASTLING_CHANGE_SHIFT) & CASTLING_BITS;
+        int castling = (status >>> CASTLING_SHIFT) & CASTLING_BITS;
+        if(castlingChange != 0) {
+            key ^= Zobrist.CASTLING[castling & castlingChange];
+            castling &= ~castlingChange;
+        }
+        newBoard[0] = board0;
+        newBoard[1] = board1;
+        newBoard[2] = board2;
+        newBoard[3] = board3;
+        newBoard[STATUS] = (1 ^ player) | (castling << CASTLING_SHIFT) | (((status >>> HALF_MOVE_CLOCK_SHIFT & HALF_MOVE_CLOCK_BITS) + 1) << HALF_MOVE_CLOCK_SHIFT) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+        newBoard[KEY] = key ^ Zobrist.WHITEMOVE ^ (Zobrist.ENPASSANT_FILE[eSquare & FILE] & -((eSquare | -eSquare) >>> 31)) ^ Zobrist.PIECE[KING][player][startSquare] ^ Zobrist.PIECE[KING][player][targetSquare] ^ Zobrist.PIECE[ROOK][player][rookStartSquare] ^ Zobrist.PIECE[ROOK][player][rookTargetSquare];
+    }
+
     private static void makeCaptureIntoFast(long board0, long board1, long board2, long board3, int status, long move, long[] newBoard) {
         final int player = status & PLAYER_BIT;
         final int startSquare = (int) move & SQUARE_BITS;
@@ -263,6 +299,36 @@ public class Board {
         newBoard[STATUS] = (1 ^ player) | (castling << CASTLING_SHIFT) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
     }
 
+    private static void makeCaptureInto(long board0, long board1, long board2, long board3, int status, long key, long move, long[] newBoard) {
+        final int player = status & PLAYER_BIT;
+        final int startSquare = (int) move & SQUARE_BITS;
+        final int targetSquare = (int) move >>> TARGET_SQUARE_SHIFT & SQUARE_BITS;
+        final int startPiece = (int) move >>> START_PIECE_SHIFT & PIECE_BITS;
+        final int startPieceType = startPiece & PIECE_TYPE;
+        final int targetPiece = (int) move >>> TARGET_PIECE_SHIFT & PIECE_BITS;
+        final int targetPieceType = targetPiece & PIECE_TYPE;
+        final int eSquare = (status >>> ESQUARE_SHIFT) & SQUARE_BITS;
+        final long startSquareBit = 1L << startSquare;
+        final long targetSquareBit = 1L << targetSquare;
+        final int pieceChange = startPiece ^ targetPiece;
+        board0 ^= (-(startPiece & 1) & startSquareBit) | (-(pieceChange & 1) & targetSquareBit);
+        board1 ^= (-(startPiece >>> 1 & 1) & startSquareBit) | (-(pieceChange >>> 1 & 1) & targetSquareBit);
+        board2 ^= (-(startPiece >>> 2 & 1) & startSquareBit) | (-(pieceChange >>> 2 & 1) & targetSquareBit);
+        board3 ^= targetSquareBit | (-player & startSquareBit);
+        final int castlingChange = (int) (move >>> CASTLING_CHANGE_SHIFT) & CASTLING_BITS;
+        int castling = (status >>> CASTLING_SHIFT) & CASTLING_BITS;
+        if(castlingChange != 0) {
+            key ^= Zobrist.CASTLING[castling & castlingChange];
+            castling &= ~castlingChange;
+        }
+        newBoard[0] = board0;
+        newBoard[1] = board1;
+        newBoard[2] = board2;
+        newBoard[3] = board3;
+        newBoard[STATUS] = (1 ^ player) | (castling << CASTLING_SHIFT) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+        newBoard[KEY] = key ^ Zobrist.WHITEMOVE ^ (Zobrist.ENPASSANT_FILE[eSquare & FILE] & -((eSquare | -eSquare) >>> 31)) ^ Zobrist.PIECE[startPieceType][player][startSquare] ^ Zobrist.PIECE[startPieceType][player][targetSquare] ^ Zobrist.PIECE[targetPieceType][player][targetSquare];
+    }
+
     private static void makeEnPassantIntoFast(long board0, long board1, long board2, long board3, int status, long move, long[] newBoard) {
         final int player = status & PLAYER_BIT;
         final int startSquare = (int) move & SQUARE_BITS;
@@ -278,6 +344,25 @@ public class Board {
         newBoard[2] = board2;
         newBoard[3] = board3;
         newBoard[STATUS] = (1 ^ player) | (status & 0b11110) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+    }
+
+    private static void makeEnPassantInto(long board0, long board1, long board2, long board3, int status, long key, long move, long[] newBoard) {
+        final int player = status & PLAYER_BIT;
+        final int startSquare = (int) move & SQUARE_BITS;
+        final int targetSquare = (int) move >>> TARGET_SQUARE_SHIFT & SQUARE_BITS;
+        final int captureSquare = targetSquare + (player << 4) - 8;
+        final int eSquare = (status >>> ESQUARE_SHIFT) & SQUARE_BITS;
+        final long pieceMoveBits = (1L << startSquare) | (1L << targetSquare);
+        final long captureSquareBit = 1L << captureSquare;
+        board1 ^= pieceMoveBits | captureSquareBit;
+        board2 ^= pieceMoveBits | captureSquareBit;
+        board3 ^= (-player & pieceMoveBits) | (~(-player) & captureSquareBit);
+        newBoard[0] = board0;
+        newBoard[1] = board1;
+        newBoard[2] = board2;
+        newBoard[3] = board3;
+        newBoard[STATUS] = (1 ^ player) | (status & 0b11110) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+        newBoard[KEY] = key ^ Zobrist.WHITEMOVE ^ (Zobrist.ENPASSANT_FILE[eSquare & FILE] & -((eSquare | -eSquare) >>> 31)) ^ Zobrist.PIECE[PAWN][player][startSquare] ^ Zobrist.PIECE[PAWN][player][targetSquare] ^ Zobrist.PIECE[PAWN][player][captureSquare];
     }
 
     private static void makePromotionIntoFast(long board0, long board1, long board2, long board3, int status, long move, long[] newBoard) {
@@ -296,6 +381,27 @@ public class Board {
         newBoard[2] = board2;
         newBoard[3] = board3;
         newBoard[STATUS] = (1 ^ player) | (status & 0b11110) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+    }
+
+    private static void makePromotionInto(long board0, long board1, long board2, long board3, int status, long key, long move, long[] newBoard) {
+        final int player = status & PLAYER_BIT;
+        final int startSquare = (int) move & SQUARE_BITS;
+        final int targetSquare = (int) move >>> TARGET_SQUARE_SHIFT & SQUARE_BITS;
+        final int promotePiece = (int) move >>> 12 & PIECE_BITS;
+        final int promotePieceType = promotePiece & PIECE_TYPE;
+        final int eSquare = (status >>> ESQUARE_SHIFT) & SQUARE_BITS;
+        final long startSquareBit = 1L << startSquare;
+        final long targetSquareBit = 1L << targetSquare;
+        board0 ^= -(promotePiece & 1) & targetSquareBit;
+        board1 ^= startSquareBit | (-(promotePiece >>> 1 & 1) & targetSquareBit);
+        board2 ^= startSquareBit | (-(promotePiece >>> 2 & 1) & targetSquareBit);
+        board3 ^= -player & (startSquareBit | targetSquareBit);
+        newBoard[0] = board0;
+        newBoard[1] = board1;
+        newBoard[2] = board2;
+        newBoard[3] = board3;
+        newBoard[STATUS] = (1 ^ player) | (status & 0b11110) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+        newBoard[KEY] = key ^ Zobrist.WHITEMOVE ^ (Zobrist.ENPASSANT_FILE[eSquare & FILE] & -((eSquare | -eSquare) >>> 31)) ^ Zobrist.PIECE[PAWN][player][startSquare] ^ Zobrist.PIECE[promotePieceType][player][targetSquare];
     }
 
     private static void makeCapturePromotionIntoFast(long board0, long board1, long board2, long board3, int status, long move, long[] newBoard) {
@@ -318,5 +424,35 @@ public class Board {
         newBoard[2] = board2;
         newBoard[3] = board3;
         newBoard[STATUS] = (1 ^ player) | (castling << CASTLING_SHIFT) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+    }
+
+    private static void makeCapturePromotionInto(long board0, long board1, long board2, long board3, int status, long key, long move, long[] newBoard) {
+        final int player = status & PLAYER_BIT;
+        final int startSquare = (int) move & SQUARE_BITS;
+        final int targetSquare = (int) move >>> TARGET_SQUARE_SHIFT & SQUARE_BITS;
+        final int targetPiece = (int) move >>> TARGET_PIECE_SHIFT & PIECE_BITS;
+        final int targetPieceType = targetPiece & PIECE_TYPE;
+        final int promotePiece = (int) move >>> 12 & PIECE_BITS;
+        final int promotePieceType = promotePiece & PIECE_TYPE;
+        final int eSquare = (status >>> ESQUARE_SHIFT) & SQUARE_BITS;
+        final long startSquareBit = 1L << startSquare;
+        final long targetSquareBit = 1L << targetSquare;
+        final int pieceChange = targetPiece ^ promotePiece;
+        board0 ^= -(pieceChange & 1) & targetSquareBit;
+        board1 ^= startSquareBit | (-(pieceChange >>> 1 & 1) & targetSquareBit);
+        board2 ^= startSquareBit | (-(pieceChange >>> 2 & 1) & targetSquareBit);
+        board3 ^= targetSquareBit | (-player & startSquareBit);
+        final int castlingChange = (int) (move >>> CASTLING_CHANGE_SHIFT) & CASTLING_BITS;
+        int castling = ((status >>> CASTLING_SHIFT) & CASTLING_BITS);
+        if(castlingChange != 0) {
+            key ^= Zobrist.CASTLING[castling & castlingChange];
+            castling &= ~castlingChange;
+        }
+        newBoard[0] = board0;
+        newBoard[1] = board1;
+        newBoard[2] = board2;
+        newBoard[3] = board3;
+        newBoard[STATUS] = (1 ^ player) | (castling << CASTLING_SHIFT) | (((status >>> FULL_MOVE_NUMBER_SHIFT) + player) << FULL_MOVE_NUMBER_SHIFT);
+        newBoard[KEY] = key ^ Zobrist.WHITEMOVE ^ (Zobrist.ENPASSANT_FILE[eSquare & FILE] & -((eSquare | -eSquare) >>> 31)) ^ Zobrist.PIECE[PAWN][player][startSquare] ^ Zobrist.PIECE[promotePieceType][player][targetSquare] ^ Zobrist.PIECE[targetPieceType][player][targetSquare];
     }
 }
