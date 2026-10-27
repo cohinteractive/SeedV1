@@ -13,9 +13,11 @@ public class Board {
     public static final int ESQUARE_SHIFT = 5;
     public static final int HALF_MOVE_CLOCK_SHIFT = 11;
     public static final int FULL_MOVE_NUMBER_SHIFT = 19;
+    public static final int FULL_MOVE_NUMBER_BITS_UNSHIFTED = FULL_MOVE_NUMBER_BITS << FULL_MOVE_NUMBER_SHIFT;
     public static final int FILE = 7;
     public static final int FILE_C = 2;
     public static final int FILE_G = 6;
+    
     /*
      * bit  0       : player
      * bits 1-4     : castling
@@ -90,6 +92,27 @@ public class Board {
         }
     }
 
+    public static void nullMoveInto(long board0, long board1, long board2, long board3, int status, long key, long[] newBoard) {
+        final int eSquare = status >>> ESQUARE_SHIFT & SQUARE_BITS;
+        if(eSquare > 0) key ^= Zobrist.ENPASSANT_FILE[eSquare & FILE];
+        key ^= Zobrist.WHITEMOVE;
+        newBoard[0] = board0;
+        newBoard[1] = board1;
+        newBoard[2] = board2;
+        newBoard[3] = board3;
+        newBoard[STATUS] = (status ^ PLAYER_BIT) & ~(FULL_MOVE_NUMBER_BITS_UNSHIFTED) | ((status >>> FULL_MOVE_NUMBER_SHIFT & FULL_MOVE_NUMBER_BITS) + (status & PLAYER_BIT)) & ~ENPASSANT_RESET_BITS;
+        newBoard[KEY] = key;
+    }
+
+    public static long getCheckersPext(long board0, long board1, long board2, long board3, long colorMask, int player, int kingSquare, long allOccupancy) {
+        final long otherQueens = ~board0 & board1 & ~board2 & ~colorMask;
+        return (LEAP_ATTACKS[kingSquare] & (board0 & ~board1 & board2 & ~colorMask)) |
+               (PAWN_ATTACKS[player][kingSquare] & (~board0 & board1 & board2 & ~colorMask)) |
+               (KING_ATTACKS[kingSquare] & (board0 & ~board1 & ~board2 & ~colorMask)) |
+               (Pext.rookMoves(kingSquare, allOccupancy) & (otherQueens | (board0 & board1 & ~board2 & ~colorMask))) |
+               (Pext.bishopMoves(kingSquare, allOccupancy) & (otherQueens | (~board0 & ~board1 & board2 & ~colorMask)));
+    }
+
     private static final int PLAYER_BIT = 1;
     private static final int SQUARE_BITS = 0b111111;
     private static final int PIECE_BITS = 0b1111;
@@ -104,6 +127,47 @@ public class Board {
     private static final int KING = 1;
     private static final int ROOK = 3;
     private static final int PAWN = 6;
+    private static final int ENPASSANT_RESET_BITS = ~(SQUARE_BITS << ESQUARE_SHIFT);
+    private static final long[] KING_ATTACKS = new long[64];
+    private static final long[] LEAP_ATTACKS = new long[64];
+    private static final long[][] PAWN_ATTACKS = new long[2][64];
+    private static final long FILE_A_BITBOARD = 0x0101010101010101L;
+    private static final long FILE_B_BITBOARD = 0x0202020202020202L;
+    private static final long FILE_G_BITBOARD = 0x4040404040404040L;
+    private static final long FILE_H_BITBOARD = 0x8080808080808080L;
+    static {
+        for(int square = SQUARE_A1; square <= SQUARE_H8; square ++) {
+            final long squareBit = 1L << square;
+            KING_ATTACKS[square] =
+                (squareBit << 9 & ~FILE_A_BITBOARD) |
+                (squareBit << 8) |
+                (squareBit << 7 & ~FILE_H_BITBOARD) |
+                (squareBit << 1 & ~FILE_A_BITBOARD) |
+                (squareBit >>> 1 & ~FILE_H_BITBOARD) |
+                (squareBit >>> 7 & ~FILE_A_BITBOARD) |
+                (squareBit >>> 8) |
+                (squareBit >>> 9 & ~FILE_H_BITBOARD)
+            ;
+            LEAP_ATTACKS[square] =
+                (squareBit << 17 & ~FILE_A_BITBOARD) |
+                (squareBit << 15 & ~FILE_H_BITBOARD) |
+                (squareBit << 10 & ~(FILE_A_BITBOARD | FILE_B_BITBOARD)) |
+                (squareBit << 6 & ~(FILE_G_BITBOARD | FILE_H_BITBOARD)) |
+                (squareBit >>> 6 & ~(FILE_A_BITBOARD | FILE_B_BITBOARD)) |
+                (squareBit >>> 10 & ~(FILE_G_BITBOARD | FILE_H_BITBOARD)) |
+                (squareBit >>> 15 & ~FILE_A_BITBOARD) |
+                (squareBit >>> 17 & ~FILE_H_BITBOARD)
+            ;
+            PAWN_ATTACKS[0][square] =
+                (squareBit << 9 & ~FILE_A_BITBOARD) |
+                (squareBit << 7 & ~FILE_H_BITBOARD)
+            ;
+            PAWN_ATTACKS[1][square] =
+                (squareBit >>> 7 & ~FILE_A_BITBOARD) |
+                (squareBit >>> 9 & ~FILE_H_BITBOARD)
+            ;
+        }
+    }
 
     private static void makeQuietIntoFast(long board0, long board1, long board2, long board3, int status, long move, long[] newBoard) {
         final int player = status & PLAYER_BIT;

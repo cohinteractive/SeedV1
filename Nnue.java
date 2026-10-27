@@ -115,10 +115,8 @@ public class Nnue {
         long pKings = pboard0 & ~pboard1 & ~pboard2;
         long cKings = cboard0 & ~cboard1 & ~cboard2;
         for(int player = 0; player < 2; player ++) {
-            long pMask = ~(-(player) ^ pboard3);
-            long cMask = ~(-(player) ^ cboard3);
-            int pKing = lsb[(int) (((pKings & pMask) * DB) >>> 58)];
-            int cKing = lsb[(int) (((cKings & cMask) * DB) >>> 58)];
+            int pKing = lsb[(int) (((pKings & (~(-(player) ^ pboard3))) * DB) >>> 58)];
+            int cKing = lsb[(int) (((cKings & (~(-(player) ^ cboard3))) * DB) >>> 58)];
             int offset = player << 8;
             if(featureIndex(0, 1, pKing, player) != featureIndex(0, 1, cKing, player)) {
                 for(int i = 0; i < 256; i ++)
