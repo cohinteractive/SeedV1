@@ -100,7 +100,7 @@ public class Board {
         newBoard[1] = board1;
         newBoard[2] = board2;
         newBoard[3] = board3;
-        newBoard[STATUS] = (status ^ PLAYER_BIT) & ~(FULL_MOVE_NUMBER_BITS_UNSHIFTED) | ((status >>> FULL_MOVE_NUMBER_SHIFT & FULL_MOVE_NUMBER_BITS) + (status & PLAYER_BIT)) & ~ENPASSANT_RESET_BITS;
+        newBoard[STATUS] = ((status ^ PLAYER_BIT) & ~FULL_MOVE_NUMBER_BITS_UNSHIFTED | (((status >>> FULL_MOVE_NUMBER_SHIFT & FULL_MOVE_NUMBER_BITS) + (status & PLAYER_BIT)) & FULL_MOVE_NUMBER_BITS) << FULL_MOVE_NUMBER_SHIFT) & ENPASSANT_RESET_BITS;
         newBoard[KEY] = key;
     }
 

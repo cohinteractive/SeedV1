@@ -1,13 +1,6 @@
-import java.io.IOException;
-
 public class Main {
     
     public static void main(String[] args) {
-        try {
-            Nnue nnue = new Nnue();
-        } catch (IOException e) {
-            System.out.println("e");
-        }
         Eval eval = new Eval(1);
         long[] parent = Board.fromFen("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
         long[] child = Board.fromFen("4k3/8/8/8/8/8/8/3K4 b - - 0 1");
@@ -18,8 +11,6 @@ public class Main {
         if(incremental != rebuilt)
             throw new AssertionError("Incremental evaluation mismatch");
         System.out.println("Evaluation parity ok: " + incremental);
-
-
     }
 
     private Main() {}
