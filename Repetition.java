@@ -2,22 +2,40 @@ public final class Repetition {
     
     public Repetition(int capacity) {
         keys = new long[capacity];
+        fingerprints = new long[capacity];
     }
 
     public void reset(long[] root) {
         reset(root, null, 0);
     }
 
-    public void reset(long[] root, long[] previousKeys, int count) {
-        if(count < 0 || count >= keys.length || (count > 0 && (previousKeys == null || count > previousKeys.length)))
-            throw new IllegalArgumentException("Invalid game history");
-        if(count > 0)
-            System.arraycopy(previousKeys, 0, keys, 0, count);
-        size = count;
-        barrier = 0;
-        keys[size ++] = key(root[0], root[1], root[2], root[3], (int) root[4], root[5]);
-        rootSize = size;
-    }
+    
+public void reset(long[] root, long[] previousKeys, int count) {
+    if(count < 0 || count >= keys.length ||
+       (count > 0 && (previousKeys == null || count > previousKeys.length)))
+        throw new IllegalArgumentException("Invalid game history");
+
+    if(count > 0)
+        System.arraycopy(previousKeys, 0, keys, 0, count);
+
+    size = count;
+    barrier = 0;
+    keys[size++] = key(root[0], root[1], root[2], root[3], (int) root[4], root[5]);
+    rootSize = size;
+
+    int halfmove = (int) (root[Board.STATUS] >>> Board.HALF_MOVE_CLOCK_SHIFT)
+                 & Board.HALF_MOVE_CLOCK_BITS;
+
+    // SeedV6 treats a saturated 127 clock as including all history.
+    int start = halfmove >= 127 ? 0 : Math.max(0, size - 1 - halfmove);
+
+    long fingerprint = SearchKey.SEED;
+    for(int i = start; i < size; i ++)
+        fingerprint = SearchKey.append(fingerprint, keys[i]);
+
+    fingerprints[size - 1] = fingerprint;
+}
+
 
     public long key(long board0, long board1, long board2, long board3, int status, long key) {
         long result = key;
@@ -30,11 +48,24 @@ public final class Repetition {
         return result ^ Zobrist.ENPASSANT_FILE[ep & 7];
     }
 
-    public void push(long board0, long board1, long board2, long board3, int status, long key) {
-        if(size == keys.length)
-            throw new IllegalStateException("Repetition capacity exceeded");
-        keys[size ++] = key(board0, board1, board2, board3, status, key);
-    }
+    
+public void push(long board0, long board1, long board2, long board3, int status, long key) {
+    if(size == keys.length)
+        throw new IllegalStateException("Repetition capacity exceeded");
+
+    long key2 = key(board0, board1, board2, board3, status, key);
+    int halfmove = (status >>> Board.HALF_MOVE_CLOCK_SHIFT)
+                 & Board.HALF_MOVE_CLOCK_BITS;
+
+    long fingerprint = (halfmove == 0 || size == barrier)
+                     ? SearchKey.SEED
+                     : fingerprints[size - 1];
+
+    keys[size] = key2;
+    fingerprints[size] = SearchKey.append(fingerprint, key2);
+    size++;
+}
+
 
     public void pop() {
         if(size <= rootSize)
@@ -61,7 +92,14 @@ public final class Repetition {
         barrier = previousBarrier;
     }
 
+    public long searchKey(int status, long key) {
+        if(size == barrier)
+            throw new IllegalStateException("Synthetic null position has no real-history fingerprint");
+        return SearchKey.get(key, status, fingerprints[size - 1]);
+    }
+
     private final long[] keys;
+    private final long[] fingerprints;
     private final long[] epMoves = new long[512];
     private int size;
     private int rootSize;
